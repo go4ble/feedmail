@@ -1,0 +1,18 @@
+@import com.rometools.rome.feed.synd.SyndEntry
+
+@(name: String, entries: Seq[SyndEntry])
+
+<html lang="en">
+    <body>
+        @if(entries.length == 1) {
+            <h2>1 new entry for @name</h2>
+        } else {
+            <h2>@entries.length new entries for @name</h2>
+        }
+        @for(firstEntry <- entries.headOption) { @html.EntryTemplate(firstEntry) }
+        @for(entry <- entries.tail) {
+            <hr/>
+            @html.EntryTemplate(entry)
+        }
+    </body>
+</html>

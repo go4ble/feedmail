@@ -1,0 +1,22 @@
+@import com.rometools.rome.feed.synd.SyndEntry
+@import java.text.DateFormat
+
+@(entry: SyndEntry)
+
+<div>
+    <h3 class="entry-title">
+        <a href="@entry.getLink">@entry.getTitle</a>
+    </h3>
+    @for(date <- Option(entry.getPublishedDate) orElse Option(entry.getUpdatedDate)) {
+      <p class="entry-date">@DateFormat.getDateTimeInstance.format(date)</p>
+    }
+    @for(description <- Option(entry.getDescription)) {
+        <div class="entry-description">
+            @if(description.getType == "text/html") {
+                @Html(description.getValue)
+            } else {
+                <p>@description.getValue</p>
+            }
+        </div>
+    }
+</div>
