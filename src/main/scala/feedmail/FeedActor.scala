@@ -45,11 +45,13 @@ object FeedActor {
           Behaviors.same
         case ProcessFeed(feed) =>
           val entries = feed.getEntries.asScala.toSeq
+          val entryUris = entries.map(_.uri).toSet
           val doneF = for {
-            newEntryUris <- filterNewEntries(name, entries.map(_.uri).toSet)
+            newEntryUris <- filterNewEntries(name, entryUris)
             newEntries = entries.filter(newEntryUris contains _.uri)
             _ <- FeedEmail(name, newEntries).send
             _ <- addNewEntries(name, newEntryUris)
+            _ <- if (config.resetAbsentEntries) resetAbsentEntries(name, entryUris) else Future.successful(0)
           } yield Done
           context.pipeToSelf(doneF)(assumingSuccess(_ => Reschedule))
           Behaviors.same
@@ -81,6 +83,9 @@ object FeedActor {
         .map(_.getOrElse(0))
     else
       Future.successful(0)
+
+  private def resetAbsentEntries(feedName: String, uris: Set[URI])(implicit ec: ExecutionContext): Future[Int] =
+    RecordedEntriesTable.filter(re => (re.feedName === feedName) && !(re.uri inSet uris)).delete.execute
 
   private def clearAllEntries(feedName: String)(implicit ec: ExecutionContext): Future[Int] =
     RecordedEntriesTable.filter(_.feedName === feedName).delete.execute

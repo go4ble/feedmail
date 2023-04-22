@@ -11,15 +11,21 @@ import scala.util.Try
 object Config {
   private lazy val underlying = ConfigFactory.load()
 
-  // TODO option to remove old entries (resetAbsentEntries)
-  case class Feed(url: URL, interval: FiniteDuration, executeOnStartup: Boolean, clearHistoryOnStartup: Boolean)
+  case class Feed(
+      url: URL,
+      interval: FiniteDuration,
+      executeOnStartup: Boolean,
+      clearHistoryOnStartup: Boolean,
+      resetAbsentEntries: Boolean
+  )
 
   private implicit val feedValueReader: ValueReader[Feed] = ValueReader.relative { feedConfig =>
     Feed(
       url = feedConfig.as[URL]("url"),
       interval = feedConfig.as[FiniteDuration]("interval"),
       executeOnStartup = feedConfig.getOrElse[Boolean]("execute-on-startup", false),
-      clearHistoryOnStartup = feedConfig.getOrElse[Boolean]("clear-history-on-startup", false)
+      clearHistoryOnStartup = feedConfig.getOrElse[Boolean]("clear-history-on-startup", false),
+      resetAbsentEntries = feedConfig.getOrElse[Boolean]("reset-absent-entries", true)
     )
   }
 
