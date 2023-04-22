@@ -16,6 +16,8 @@ lazy val root = (project in file("."))
   )
   .enablePlugins(SbtTwirl)
 
+(Compile / compile) := ((Compile / compile) dependsOn scalafmtCheckAll).value
+
 import com.typesafe.sbt.packager.docker._
 enablePlugins(JavaAppPackaging)
 dockerBaseImage := "eclipse-temurin:17-jre-alpine"

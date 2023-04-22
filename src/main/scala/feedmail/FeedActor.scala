@@ -86,7 +86,7 @@ object FeedActor {
     RecordedEntriesTable.filter(_.feedName === feedName).delete.execute
 
   private def assumingSuccess[T, U](fn: T => U)(attempt: Try[T]): U = attempt match {
-    case Success(value) => fn(value)
+    case Success(value)     => fn(value)
     case Failure(exception) => throw exception
   }
 

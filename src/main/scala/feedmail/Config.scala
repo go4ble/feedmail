@@ -26,13 +26,13 @@ object Config {
   lazy val feeds: Map[String, Feed] = underlying.as[Map[String, Feed]]("feeds")
 
   case class Email(
-                    to: Seq[String],
-                    from: String,
-                    smtpHost: String,
-                    smtpPort: Int,
-                    smtpUsername: Option[String],
-                    smtpPassword: Option[String]
-                  )
+      to: Seq[String],
+      from: String,
+      smtpHost: String,
+      smtpPort: Int,
+      smtpUsername: Option[String],
+      smtpPassword: Option[String]
+  )
 
   private implicit val emailValueReader: ValueReader[Email] = ValueReader.relative { emailConfig =>
     Email(

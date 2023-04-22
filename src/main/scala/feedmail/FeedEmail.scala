@@ -18,7 +18,8 @@ case class FeedEmail(name: String, entries: Seq[SyndEntry]) {
   private lazy val asHtml: String = html.FeedEmailTemplate(name, entries).toString()
 
   def send(implicit ec: ExecutionContext): Future[Unit] = {
-    val email = EmailBuilder.startingBlank()
+    val email = EmailBuilder
+      .startingBlank()
       .from(emailConfig.from)
       .to(emailConfig.to.map(new Recipient(null, _, RecipientType.TO)).asJava)
       .withSubject(s"[feedmail] - $name")
