@@ -13,6 +13,8 @@ import scala.jdk.FutureConverters._
 case class FeedEmail(name: String, entries: Seq[SyndEntry]) {
   import FeedEmail._
 
+  require(entries.nonEmpty, "at least one entry must be provided")
+
   private lazy val asTxt: String = "" // TODO
 
   private lazy val asHtml: String = html.FeedEmailTemplate(name, entries).toString()

@@ -49,7 +49,7 @@ object FeedActor {
           val doneF = for {
             newEntryUris <- filterNewEntries(name, entryUris)
             newEntries = entries.filter(newEntryUris contains _.uri)
-            _ <- FeedEmail(name, newEntries).send
+            _ <- if (newEntries.nonEmpty) FeedEmail(name, newEntries).send else Future.successful(())
             _ <- addNewEntries(name, newEntryUris)
             _ <- if (config.resetAbsentEntries) resetAbsentEntries(name, entryUris) else Future.successful(0)
           } yield Done
