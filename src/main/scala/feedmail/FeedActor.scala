@@ -22,9 +22,9 @@ object FeedActor {
 
   sealed trait FeedActorMessage
   private final case object InitializeCheck extends FeedActorMessage
-  private final case class ProcessFeed(feed: SyndFeed) extends FeedActorMessage
+  private final case class ProcessFeed(feed: Try[SyndFeed]) extends FeedActorMessage
   private object ProcessFeed {
-    def apply(inputStream: InputStream): ProcessFeed = ProcessFeed(new SyndFeedInput().build(new InputSource(inputStream)))
+    def apply(inputStream: InputStream): ProcessFeed = ProcessFeed(Success(new SyndFeedInput().build(new InputSource(inputStream))))
   }
   private final case object Reschedule extends FeedActorMessage
 
@@ -41,9 +41,9 @@ object FeedActor {
       Behaviors.receiveMessage {
         case InitializeCheck =>
           context.log.debug(s"checking $name at ${config.url}")
-          context.pipeToSelf(getRemoteFeed(config.url))(assumingSuccess(ProcessFeed(_)))
+          context.pipeToSelf(getRemoteFeed(config.url))(ProcessFeed(_))
           Behaviors.same
-        case ProcessFeed(feed) =>
+        case ProcessFeed(Success(feed)) =>
           val entries = feed.getEntries.asScala.toSeq
           val entryUris = entries.map(_.uri).toSet
           val doneF = for {
@@ -54,6 +54,9 @@ object FeedActor {
             _ <- if (config.resetAbsentEntries) resetAbsentEntries(name, entryUris) else Future.successful(0)
           } yield Done
           context.pipeToSelf(doneF)(assumingSuccess(_ => Reschedule))
+          Behaviors.same
+        case ProcessFeed(Failure(error)) =>
+          context.log.error("Failed to fetch feed", error)
           Behaviors.same
         case Reschedule =>
           timer.startSingleTimer(InitializeCheck, config.interval)
