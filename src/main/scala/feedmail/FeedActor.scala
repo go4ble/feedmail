@@ -109,6 +109,7 @@ object FeedActor {
 
   private val AcceptedMediaTypes = Seq(
     MediaType.ApplicationXml,
+    MediaType("application", "rss+xml"),
     MediaType("application", "atom+xml")
   )
 
