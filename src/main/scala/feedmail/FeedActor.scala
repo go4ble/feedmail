@@ -1,6 +1,5 @@
 package feedmail
 
-import akka.Done
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
 import com.rometools.rome.feed.synd.{SyndEntry, SyndFeed}
@@ -28,15 +27,19 @@ object FeedActor {
   }
   private final case object Reschedule extends FeedActorMessage
 
-  def apply(name: String, config: Config.Feed): Behavior[FeedActorMessage] = Behaviors.withTimers { timer =>
+  def apply(name: String, config: Config.Feed): Behavior[FeedActorMessage] = Behaviors.setup { context =>
+    if (config.clearHistoryOnStartup) {
+      Await.result(clearAllEntries(name)(context.executionContext), 5.seconds)
+    }
+
+    context.self.tell(if (config.executeOnStartup) InitializeCheck else Reschedule)
+
+    defaultBehavior(name, config)
+  }
+
+  private def defaultBehavior(name: String, config: Config.Feed, retries: Int = 2): Behavior[FeedActorMessage] = Behaviors.withTimers { timer =>
     Behaviors.setup { context =>
       implicit val ec: ExecutionContext = context.executionContext
-
-      if (config.clearHistoryOnStartup) {
-        Await.result(clearAllEntries(name), 5.seconds)
-      }
-
-      context.self.tell(if (config.executeOnStartup) InitializeCheck else Reschedule)
 
       Behaviors.receiveMessage {
         case InitializeCheck =>
@@ -52,12 +55,18 @@ object FeedActor {
             _ <- if (newEntries.nonEmpty) FeedEmail(name, newEntries).send else Future.successful(())
             _ <- addNewEntries(name, newEntryUris)
             _ <- if (config.resetAbsentEntries) resetAbsentEntries(name, entryUris) else Future.successful(0)
-          } yield Done
+          } yield ()
           context.pipeToSelf(doneF)(assumingSuccess(_ => Reschedule))
-          Behaviors.same
+          defaultBehavior(name, config)
         case ProcessFeed(Failure(error)) =>
-          context.log.error("Failed to fetch feed", error)
-          Behaviors.same
+          context.log.error(s"Failed to fetch feed $name, retries ($retries)", error)
+          if (retries > 0) {
+            timer.startSingleTimer(InitializeCheck, 5.seconds)
+            defaultBehavior(name, config, retries - 1)
+          } else {
+            context.self.tell(Reschedule)
+            defaultBehavior(name, config)
+          }
         case Reschedule =>
           timer.startSingleTimer(InitializeCheck, config.interval)
           Behaviors.same
