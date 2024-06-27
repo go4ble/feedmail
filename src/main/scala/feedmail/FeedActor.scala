@@ -4,7 +4,7 @@ import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
 import com.rometools.rome.feed.synd.{SyndEntry, SyndFeed}
 import com.rometools.rome.io.SyndFeedInput
-import sttp.client3.HttpClientFutureBackend
+import sttp.client3.{HttpClientFutureBackend, SttpBackendOptions}
 import sttp.model.MediaType
 
 import java.io.{ByteArrayInputStream, InputStream}
@@ -122,12 +122,14 @@ object FeedActor {
     } yield new SyndFeedInput().build(new InputSource(new ByteArrayInputStream(content.getBytes)))
   }
 
-  private val httpBackend = HttpClientFutureBackend()
+  private val httpBackend = HttpClientFutureBackend(
+    SttpBackendOptions.connectionTimeout(5.minutes)
+  )
 
   private def getRemoteFeed(url: URL)(implicit ec: ExecutionContext): Future[SyndFeed] = {
     import sttp.client3._
     import sttp.model.Uri
-    basicRequest.get(Uri(url.toURI)).send(httpBackend).map {
+    basicRequest.get(Uri(url.toURI)).readTimeout(5.minutes).send(httpBackend).map {
       case ResponseWithFeed(feed) =>
         feed
       case r @ Response(Right(unexpectedContent), _, _, _, _, _) =>
